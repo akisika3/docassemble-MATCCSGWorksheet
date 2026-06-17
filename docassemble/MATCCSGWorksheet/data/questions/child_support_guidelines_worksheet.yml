@@ -1,0 +1,1088 @@
+---
+metadata:
+  title: |
+    Massachusetts Child Support Guidelines Worksheet (CJD 304)
+  short title: |
+    Child Support Worksheet
+  description: |
+    Generates a filled-in 2025 Massachusetts Child Support Guidelines Worksheet (CJD 304)
+    by collecting the inputs needed for Sections 1-8 and performing the worksheet's
+    calculations (Tables A, B, and C).
+  authors:
+    - name: Suffolk LIT Lab AssemblyLine
+      organization: Massachusetts Court System Forms Project
+  revision_date: 2026-06-16
+  jurisdiction: Massachusetts
+  id: ma child support guidelines worksheet
+---
+include:
+  - docassemble.AssemblyLine:assembly_line.yml
+---
+objects:
+  - users: ALPeopleList.using(ask_number=False, target_number=1)
+  - other_parties: ALPeopleList.using(ask_number=False, target_number=1)
+---
+code: |
+  github_repo_name = 'docassemble-MACSGWorksheet'
+---
+code: |
+  al_form_type = "other_form"
+---
+code: |
+  AL_DEFAULT_COUNTRY = "US"
+---
+code: |
+  AL_DEFAULT_STATE = "MA"
+---
+objects:
+  - ma_child_support_guidelines_worksheet_attachment: ALDocument.using(title="Child Support Guidelines Worksheet", filename="MA_Child_Support_Worksheet", enabled=True, has_addendum=False)
+---
+objects:
+  - al_user_bundle: ALDocumentBundle.using(elements=[ma_child_support_guidelines_worksheet_attachment], filename="MA_Child_Support_Worksheet", title="All forms to download for your records", enabled=True)
+  - al_recipient_bundle: ALDocumentBundle.using(elements=[ma_child_support_guidelines_worksheet_attachment], filename="MA_Child_Support_Worksheet", title="All forms to file", enabled=True)
+---
+features:
+  navigation: True
+  question back button: True
+  progress bar: True
+---
+sections:
+  - intro: Getting started
+  - parties: Parents and children
+  - income: Income, benefits, and deductions
+  - childcare: Child care costs
+  - review: Review and download
+---
+mandatory: True
+code: |
+  al_nav_sections = [
+    {"intro": "Getting started"},
+    {"parties": "Parents and children"},
+    {"income": "Income and deductions"},
+    {"childcare": "Child care"},
+    {"review": "Review and download"},
+  ]
+---
+id: interview_order_ma_child_support_guidelines_worksheet
+code: |
+  case_name
+  docket_number
+  signature_date
+  preparer_name
+  parenting_box
+  users[0].name.first
+  other_parties[0].name.first
+  child_count_inputs_complete
+  users[0].gross_weekly_income_amount
+  other_parties[0].gross_weekly_income_amount
+  social_security_dependency_benefits_yes
+  deductions_complete
+  child_care_grid_complete
+  calculations_complete
+  interview_order_ma_child_support_guidelines_worksheet = True
+---
+mandatory: True
+comment: |
+  This block controls the top-level interview flow.
+  Delete mandatory: True to embed this interview inside another.
+code: |
+  al_intro_screen
+  ma_child_support_guidelines_worksheet_intro
+  interview_order_ma_child_support_guidelines_worksheet
+  store_variables_snapshot(
+      persistent=True,
+      data={
+          "zip": showifdef("users[0].address.zip"),
+          "reached_interview_end": True,
+      },
+  )
+  ma_child_support_guidelines_worksheet_download
+---
+id: ma child support guidelines worksheet
+continue button field: ma_child_support_guidelines_worksheet_intro
+section: intro
+question: |
+  Fill out the Child Support Guidelines Worksheet
+subquestion: |
+  This interview asks the same questions as the Massachusetts Child Support
+  Guidelines Worksheet (CJD 304). It fills in a copy of the form for you
+  and does the math in Sections 3–8 automatically.
+---
+id: case information
+section: intro
+question: |
+  Case information
+fields:
+  - Case name: case_name
+  - Docket number (optional): docket_number
+    required: False
+  - Today's date: signature_date
+    datatype: date
+  - Preparer's name: preparer_name
+sets:
+  - case_name
+  - docket_number
+  - signature_date
+  - preparer_name
+---
+id: parenting arrangement
+section: parties
+question: |
+  What is the parenting arrangement?
+subquestion: |
+  Choose the option that best describes your situation.
+field: parenting_box
+datatype: radio
+choices:
+  - "The children spend approximately equal time living with both parents": "1"
+  - "The children live mainly with one parent (about two-thirds of the time)": "2"
+  - "There are multiple children and each parent is the primary home for at least one child": "3"
+---
+code: |
+  parenting_arrangement_shared = parenting_box == "1"
+  parenting_arrangement_primary = parenting_box == "2"
+  parenting_arrangement_split = parenting_box == "3"
+---
+id: parents names
+section: parties
+question: |
+  What are the parents' names?
+fields:
+  - First parent's full name: users[0].name.first
+  - Second parent's full name: other_parties[0].name.first
+note: |
+  % if parenting_arrangement_primary:
+  Since the children live mainly with one parent, that parent should be first.
+  % endif
+---
+id: shared child count
+section: parties
+question: |
+  How many children are covered by this order?
+subquestion: |
+  The same numbers apply to both parents.
+fields:
+  - Children under age 18: shared_children_under_18
+    datatype: integer
+    min: 0
+    max: 5
+  - Children age 18 or older: shared_children_18_or_older
+    datatype: integer
+    min: 0
+    max: 5
+show if:
+  variable: parenting_box
+  is: "1"
+---
+id: primary child count
+section: parties
+question: |
+  How many children primarily reside with the first parent?
+subquestion: |
+  These numbers are for the parent with whom the children mainly live.
+  The other parent's totals will be 0.
+fields:
+  - Children under age 18: shared_children_under_18
+    datatype: integer
+    min: 0
+    max: 5
+  - Children age 18 or older: shared_children_18_or_older
+    datatype: integer
+    min: 0
+    max: 5
+show if:
+  variable: parenting_box
+  is: "2"
+---
+id: split child count
+section: parties
+question: |
+  How many children mainly live with each parent?
+fields:
+  - ${ users[0].name.first }'s children under age 18: users[0].children_under_18_count
+    datatype: integer
+    min: 0
+    max: 5
+  - ${ users[0].name.first }'s children age 18 or older: users[0].children_18_or_older_count
+    datatype: integer
+    min: 0
+    max: 5
+  - ${ other_parties[0].name.first }'s children under age 18: other_parties[0].children_under_18_count
+    datatype: integer
+    min: 0
+    max: 5
+  - ${ other_parties[0].name.first }'s children age 18 or older: other_parties[0].children_18_or_older_count
+    datatype: integer
+    min: 0
+    max: 5
+show if:
+  variable: parenting_box
+  is: "3"
+---
+code: |
+  if parenting_arrangement_shared:
+    users[0].children_under_18_count = shared_children_under_18
+    users[0].children_18_or_older_count = shared_children_18_or_older
+    other_parties[0].children_under_18_count = shared_children_under_18
+    other_parties[0].children_18_or_older_count = shared_children_18_or_older
+  elif parenting_arrangement_primary:
+    users[0].children_under_18_count = shared_children_under_18
+    users[0].children_18_or_older_count = shared_children_18_or_older
+    other_parties[0].children_under_18_count = 0
+    other_parties[0].children_18_or_older_count = 0
+  # Box 3 (split): users[0] and other_parties[0] counts are asked directly above.
+  users[0].total_children_count = users[0].children_under_18_count + users[0].children_18_or_older_count
+  other_parties[0].total_children_count = other_parties[0].children_under_18_count + other_parties[0].children_18_or_older_count
+  if parenting_arrangement_split:
+    total_children_under_18 = users[0].children_under_18_count + other_parties[0].children_under_18_count
+    total_children_18_or_older = users[0].children_18_or_older_count + other_parties[0].children_18_or_older_count
+  else:
+    total_children_under_18 = users[0].children_under_18_count
+    total_children_18_or_older = users[0].children_18_or_older_count
+  number_of_children_eligible = total_children_under_18 + total_children_18_or_older
+  child_count_inputs_complete = True
+---
+id: gross weekly income
+section: income
+question: |
+  What is each parent's gross weekly income?
+fields:
+  - ${ users[0].name.first }'s gross weekly income: users[0].gross_weekly_income_amount
+    datatype: currency
+    min: 0
+  - ${ other_parties[0].name.first }'s gross weekly income: other_parties[0].gross_weekly_income_amount
+    datatype: currency
+    min: 0
+---
+id: social security dependency benefits
+section: income
+question: |
+  Do any children receive Social Security dependency benefits?
+subquestion: |
+  ${ collapse_template(dependency_benefit_explanation) }
+field: social_security_dependency_benefits_yes
+datatype: yesnoradio
+---
+template: dependency_benefit_explanation
+subject: |
+  What is a dependency benefit?
+content: |
+  A dependency benefit is a payment a child gets from Social Security
+  because a parent is retired or has a disability.
+---
+code: |
+  social_security_dependency_benefits_no = not social_security_dependency_benefits_yes
+---
+id: social security dependency benefit details
+section: income
+question: |
+  What are the Social Security dependency benefit details?
+fields:
+  - Which parent's retirement or disability are the benefits based on?: dependency_benefit_based_on
+    datatype: radio
+    choices:
+      - ${ users[0].name.first }: user
+      - ${ other_parties[0].name.first }: other_party
+  - Weekly amount ${ users[0].name.first } actually receives: users[0].social_security_dependency_benefit_amount
+    datatype: currency
+    min: 0
+  - Weekly amount ${ other_parties[0].name.first } actually receives: other_parties[0].social_security_dependency_benefit_amount
+    datatype: currency
+    min: 0
+show if:
+  variable: social_security_dependency_benefits_yes
+  is: True
+---
+code: |
+  if not social_security_dependency_benefits_yes:
+    users[0].social_security_dependency_benefit_amount = 0
+    other_parties[0].social_security_dependency_benefit_amount = 0
+    dependency_benefit_based_on = None
+  dependency_benefit_based_on_user = dependency_benefit_based_on == "user"
+  dependency_benefit_based_on_other_party = dependency_benefit_based_on == "other_party"
+  # 2c: total of all amounts in 2b, entered in the column of the retired/disabled parent
+  users[0].total_dependency_benefit_amount = (
+    users[0].social_security_dependency_benefit_amount + other_parties[0].social_security_dependency_benefit_amount
+  ) if dependency_benefit_based_on_user else 0
+  other_parties[0].total_dependency_benefit_amount = (
+    users[0].social_security_dependency_benefit_amount + other_parties[0].social_security_dependency_benefit_amount
+  ) if dependency_benefit_based_on_other_party else 0
+---
+id: deductions
+section: income
+question: |
+  What are each parent's deductions?
+subquestion: |
+  Weekly amounts for each deduction. Use $0 if a deduction does not apply.
+fields:
+  - ${ users[0].name.first }'s other support obligations paid each week: users[0].other_support_paid_amount
+    datatype: currency
+    min: 0
+    default: 0
+  - ${ other_parties[0].name.first }'s other support obligations paid each week: other_parties[0].other_support_paid_amount
+    datatype: currency
+    min: 0
+    default: 0
+  - ${ users[0].name.first }'s health care premium or enrollment paid each week: users[0].health_care_premium_amount
+    datatype: currency
+    min: 0
+    default: 0
+  - ${ other_parties[0].name.first }'s health care premium or enrollment paid each week: other_parties[0].health_care_premium_amount
+    datatype: currency
+    min: 0
+    default: 0
+  - ${ users[0].name.first }'s dental or vision insurance paid each week: users[0].dental_vision_insurance_amount
+    datatype: currency
+    min: 0
+    default: 0
+  - ${ other_parties[0].name.first }'s dental or vision insurance paid each week: other_parties[0].dental_vision_insurance_amount
+    datatype: currency
+    min: 0
+    default: 0
+---
+code: |
+  deductions_complete = True
+---
+id: child care costs
+section: childcare
+question: |
+  What are each parent's child care costs?
+subquestion: |
+  For each child, the weekly amount each parent pays for child care.
+  Use $0 if there are no costs.
+fields:
+  - Child 1 — ${ users[0].name.first }'s weekly cost: child1_care_paid_by_user_amount
+    datatype: currency
+    min: 0
+    default: 0
+  - Child 1 — ${ other_parties[0].name.first }'s weekly cost: child1_care_paid_by_other_party_amount
+    datatype: currency
+    min: 0
+    default: 0
+  - Child 2 — ${ users[0].name.first }'s weekly cost: child2_care_paid_by_user_amount
+    datatype: currency
+    min: 0
+    default: 0
+    required: False
+    show if:
+      code: |
+        number_of_children_eligible >= 2
+  - Child 2 — ${ other_parties[0].name.first }'s weekly cost: child2_care_paid_by_other_party_amount
+    datatype: currency
+    min: 0
+    default: 0
+    required: False
+    show if:
+      code: |
+        number_of_children_eligible >= 2
+  - Child 3 — ${ users[0].name.first }'s weekly cost: child3_care_paid_by_user_amount
+    datatype: currency
+    min: 0
+    default: 0
+    required: False
+    show if:
+      code: |
+        number_of_children_eligible >= 3
+  - Child 3 — ${ other_parties[0].name.first }'s weekly cost: child3_care_paid_by_other_party_amount
+    datatype: currency
+    min: 0
+    default: 0
+    required: False
+    show if:
+      code: |
+        number_of_children_eligible >= 3
+  - Child 4 — ${ users[0].name.first }'s weekly cost: child4_care_paid_by_user_amount
+    datatype: currency
+    min: 0
+    default: 0
+    required: False
+    show if:
+      code: |
+        number_of_children_eligible >= 4
+  - Child 4 — ${ other_parties[0].name.first }'s weekly cost: child4_care_paid_by_other_party_amount
+    datatype: currency
+    min: 0
+    default: 0
+    required: False
+    show if:
+      code: |
+        number_of_children_eligible >= 4
+  - Child 5 — ${ users[0].name.first }'s weekly cost: child5_care_paid_by_user_amount
+    datatype: currency
+    min: 0
+    default: 0
+    required: False
+    show if:
+      code: |
+        number_of_children_eligible >= 5
+  - Child 5 — ${ other_parties[0].name.first }'s weekly cost: child5_care_paid_by_other_party_amount
+    datatype: currency
+    min: 0
+    default: 0
+    required: False
+    show if:
+      code: |
+        number_of_children_eligible >= 5
+---
+code: |
+  if number_of_children_eligible < 2:
+    child2_care_paid_by_user_amount = 0
+    child2_care_paid_by_other_party_amount = 0
+  if number_of_children_eligible < 3:
+    child3_care_paid_by_user_amount = 0
+    child3_care_paid_by_other_party_amount = 0
+  if number_of_children_eligible < 4:
+    child4_care_paid_by_user_amount = 0
+    child4_care_paid_by_other_party_amount = 0
+  if number_of_children_eligible < 5:
+    child5_care_paid_by_user_amount = 0
+    child5_care_paid_by_other_party_amount = 0
+  child_care_amounts_by_child = [
+    (child1_care_paid_by_user_amount, child1_care_paid_by_other_party_amount),
+    (child2_care_paid_by_user_amount, child2_care_paid_by_other_party_amount),
+    (child3_care_paid_by_user_amount, child3_care_paid_by_other_party_amount),
+    (child4_care_paid_by_user_amount, child4_care_paid_by_other_party_amount),
+    (child5_care_paid_by_user_amount, child5_care_paid_by_other_party_amount),
+  ]
+  child1_care_total_amount = child1_care_paid_by_user_amount + child1_care_paid_by_other_party_amount
+  child2_care_total_amount = child2_care_paid_by_user_amount + child2_care_paid_by_other_party_amount
+  child3_care_total_amount = child3_care_paid_by_user_amount + child3_care_paid_by_other_party_amount
+  child4_care_total_amount = child4_care_paid_by_user_amount + child4_care_paid_by_other_party_amount
+  child5_care_total_amount = child5_care_paid_by_user_amount + child5_care_paid_by_other_party_amount
+  users[0].total_child_care_amount = (
+    child1_care_paid_by_user_amount + child2_care_paid_by_user_amount + child3_care_paid_by_user_amount
+    + child4_care_paid_by_user_amount + child5_care_paid_by_user_amount
+  )
+  other_parties[0].total_child_care_amount = (
+    child1_care_paid_by_other_party_amount + child2_care_paid_by_other_party_amount + child3_care_paid_by_other_party_amount
+    + child4_care_paid_by_other_party_amount + child5_care_paid_by_other_party_amount
+  )
+  child_care_grid_complete = True
+---
+# ---------------------------------------------------------------------------
+# Formatting helpers. The worksheet says: "Round all numbers to the nearest
+# whole dollar or percentage." No $ or % characters are embedded here because
+# those symbols are already printed as static text on the form next to each
+# box.
+# ---------------------------------------------------------------------------
+code: |
+  def percentage(x):
+    # x is expected as a fraction (0.0-1.0+); display as a whole percentage
+    try:
+      return str(int(round(float(x) * 100)))
+    except (TypeError, ValueError):
+      return "0"
+---
+# ---------------------------------------------------------------------------
+# TABLE A: Child Support Obligation Schedule (1 child), reconstructed from the
+# official 2025 Massachusetts Child Support Guidelines Chart (mass.gov), which
+# the worksheet itself authorizes using in 3e ("From Table A or Guidelines
+# Chart for 3d"). Each tuple is (income_threshold, weekly_support_amount).
+# Lookup rule (from the Chart's own instructions): find the largest threshold
+# that is <= the applicable income, and use its associated amount. If income
+# falls between two listed thresholds, use the lower (smaller) support amount.
+# ---------------------------------------------------------------------------
+code: |
+  table_a_schedule = [
+      (0,15), (304,16), (309,17), (314,18), (319,19), (324,20), (329,21), (334,22),
+      (339,23), (344,24), (349,25), (354,26), (359,27), (364,28), (369,29), (374,30),
+      (379,31), (384,32), (389,33), (392,86), (394,87), (398,88), (403,89), (407,90),
+      (412,91), (416,92), (421,93), (425,94), (430,95), (435,96), (439,97), (444,98),
+      (448,99), (453,100), (457,101), (462,102), (466,103), (471,104), (475,105), (480,106),
+      (485,107), (489,108), (494,109), (498,110), (503,111), (507,112), (512,113), (516,114),
+      (521,115), (525,116), (530,117), (535,118), (539,119), (544,120), (548,121), (553,122),
+      (557,123), (562,124), (566,125), (571,126), (575,127), (580,128), (585,129), (589,130),
+      (594,131), (598,132), (603,133), (607,134), (612,135), (616,136), (621,137), (625,138),
+      (630,139), (635,140), (639,141), (644,142), (648,143), (653,144), (657,145), (662,146),
+      (666,147), (671,148), (675,149), (680,150), (685,151), (689,152), (694,153), (698,154),
+      (703,155), (707,156), (712,157), (716,158), (721,159), (725,160), (730,161), (735,162),
+      (739,163), (744,164), (748,165), (753,166), (757,167), (762,168), (766,169), (771,170),
+      (775,171), (780,172), (785,173), (789,174), (794,175), (798,176), (803,177), (807,178),
+      (812,179), (816,180), (821,181), (825,182), (830,183), (835,184), (839,185), (844,186),
+      (848,187), (853,188), (857,189), (862,190), (866,191), (871,192), (875,193), (880,194),
+      (885,195), (889,196), (894,197), (898,198), (903,199), (907,200), (912,201), (916,202),
+      (921,203), (925,204), (930,205), (935,206), (939,207), (944,208), (948,209), (953,210),
+      (957,211), (962,212), (966,213), (971,214), (975,215), (980,216), (985,217), (989,218),
+      (994,219), (998,220), (1003,221), (1008,222), (1012,223), (1017,224), (1022,225), (1027,226),
+      (1031,227), (1036,228), (1041,229), (1046,230), (1050,231), (1055,232), (1060,233), (1065,234),
+      (1070,235), (1074,236), (1079,237), (1084,238), (1089,239), (1093,240), (1098,241), (1103,242),
+      (1108,243), (1112,244), (1117,245), (1122,246), (1127,247), (1131,248), (1136,249), (1141,250),
+      (1146,251), (1150,252), (1155,253), (1160,254), (1165,255), (1170,256), (1174,257), (1179,258),
+      (1184,259), (1189,260), (1193,261), (1198,262), (1203,263), (1208,264), (1212,265), (1217,266),
+      (1222,267), (1227,268), (1231,269), (1236,270), (1241,271), (1246,272), (1250,273), (1255,274),
+      (1260,275), (1265,276), (1270,277), (1274,278), (1279,279), (1284,280), (1289,281), (1293,282),
+      (1298,283), (1303,284), (1308,285), (1312,286), (1317,287), (1322,288), (1327,289), (1331,290),
+      (1336,291), (1341,292), (1346,293), (1350,294), (1355,295), (1360,296), (1365,297), (1370,298),
+      (1374,299), (1379,300), (1384,301), (1389,302), (1393,303), (1398,304), (1403,305), (1408,306),
+      (1412,307), (1417,308), (1422,309), (1427,310), (1431,311), (1436,312), (1441,313), (1446,314),
+      (1450,315), (1455,316), (1460,317), (1465,318), (1470,319), (1474,320), (1479,321), (1484,322),
+      (1489,323), (1493,324), (1498,325), (1503,326), (1508,327), (1512,328), (1517,329), (1522,330),
+      (1527,331), (1531,332), (1536,333), (1541,334), (1546,335), (1550,336), (1555,337), (1560,338),
+      (1565,339), (1570,340), (1574,341), (1579,342), (1584,343), (1589,344), (1593,345), (1598,346),
+      (1603,347), (1609,348), (1614,349), (1620,350), (1625,351), (1631,352), (1637,353), (1642,354),
+      (1648,355), (1653,356), (1659,357), (1664,358), (1670,359), (1675,360), (1681,361), (1687,362),
+      (1692,363), (1698,364), (1703,365), (1709,366), (1714,367), (1720,368), (1725,369), (1731,370),
+      (1737,371), (1742,372), (1748,373), (1753,374), (1759,375), (1764,376), (1770,377), (1775,378),
+      (1781,379), (1787,380), (1792,381), (1798,382), (1803,383), (1809,384), (1814,385), (1820,386),
+      (1825,387), (1831,388), (1837,389), (1842,390), (1848,391), (1853,392), (1859,393), (1864,394),
+      (1870,395), (1875,396), (1881,397), (1887,398), (1892,399), (1898,400), (1903,401), (1909,402),
+      (1914,403), (1920,404), (1925,405), (1931,406), (1937,407), (1942,408), (1948,409), (1953,410),
+      (1959,411), (1964,412), (1970,413), (1975,414), (1981,415), (1987,416), (1992,417), (1998,418),
+      (2003,419), (2009,420), (2014,421), (2020,422), (2025,423), (2031,424), (2037,425), (2042,426),
+      (2048,427), (2053,428), (2059,429), (2064,430), (2070,431), (2075,432), (2081,433), (2087,434),
+      (2092,435), (2098,436), (2103,437), (2109,438), (2114,439), (2120,440), (2125,441), (2131,442),
+      (2137,443), (2142,444), (2148,445), (2153,446), (2159,447), (2164,448), (2170,449), (2175,450),
+      (2181,451), (2187,452), (2192,453), (2198,454), (2203,455), (2209,456), (2214,457), (2220,458),
+      (2225,459), (2231,460), (2237,461), (2242,462), (2248,463), (2253,464), (2259,465), (2264,466),
+      (2270,467), (2275,468), (2281,469), (2287,470), (2292,471), (2298,472), (2303,473), (2309,474),
+      (2314,475), (2320,476), (2325,477), (2331,478), (2337,479), (2342,480), (2348,481), (2353,482),
+      (2359,483), (2364,484), (2370,485), (2375,486), (2381,487), (2387,488), (2392,489), (2398,490),
+      (2404,491), (2411,492), (2418,493), (2425,494), (2433,495), (2440,496), (2447,497), (2454,498),
+      (2461,499), (2468,500), (2475,501), (2483,502), (2490,503), (2497,504), (2504,505), (2511,506),
+      (2518,507), (2525,508), (2533,509), (2540,510), (2547,511), (2554,512), (2561,513), (2568,514),
+      (2575,515), (2583,516), (2590,517), (2597,518), (2604,519), (2611,520), (2618,521), (2625,522),
+      (2633,523), (2640,524), (2647,525), (2654,526), (2661,527), (2668,528), (2675,529), (2683,530),
+      (2690,531), (2697,532), (2704,533), (2711,534), (2718,535), (2725,536), (2733,537), (2740,538),
+      (2747,539), (2754,540), (2761,541), (2768,542), (2775,543), (2783,544), (2790,545), (2797,546),
+      (2804,547), (2811,548), (2818,549), (2825,550), (2833,551), (2840,552), (2847,553), (2854,554),
+      (2861,555), (2868,556), (2875,557), (2883,558), (2890,559), (2897,560), (2904,561), (2911,562),
+      (2918,563), (2925,564), (2933,565), (2940,566), (2947,567), (2954,568), (2961,569), (2968,570),
+      (2975,571), (2983,572), (2990,573), (2997,574), (3004,575), (3011,576), (3018,577), (3025,578),
+      (3033,579), (3040,580), (3047,581), (3054,582), (3061,583), (3068,584), (3075,585), (3083,586),
+      (3090,587), (3097,588), (3104,589), (3111,590), (3118,591), (3125,592), (3133,593), (3140,594),
+      (3147,595), (3154,596), (3161,597), (3168,598), (3175,599), (3183,600), (3190,601), (3197,602),
+      (3204,603), (3211,604), (3218,605), (3225,606), (3233,607), (3240,608), (3247,609), (3254,610),
+      (3261,611), (3268,612), (3275,613), (3283,614), (3290,615), (3297,616), (3304,617), (3311,618),
+      (3318,619), (3325,620), (3333,621), (3340,622), (3347,623), (3354,624), (3361,625), (3368,626),
+      (3375,627), (3383,628), (3390,629), (3397,630), (3404,631), (3411,632), (3418,633), (3425,634),
+      (3433,635), (3440,636), (3447,637), (3454,638), (3461,639), (3468,640), (3475,641), (3483,642),
+      (3490,643), (3497,644), (3505,645), (3514,646), (3523,647), (3532,648), (3541,649), (3550,650),
+      (3560,651), (3569,652), (3578,653), (3587,654), (3596,655), (3605,656), (3614,657), (3623,658),
+      (3632,659), (3641,660), (3650,661), (3660,662), (3669,663), (3678,664), (3687,665), (3696,666),
+      (3705,667), (3714,668), (3723,669), (3732,670), (3741,671), (3750,672), (3760,673), (3769,674),
+      (3778,675), (3787,676), (3796,677), (3805,678), (3814,679), (3823,680), (3832,681), (3841,682),
+      (3850,683), (3860,684), (3869,685), (3878,686), (3887,687), (3896,688), (3905,689), (3914,690),
+      (3923,691), (3932,692), (3941,693), (3950,694), (3960,695), (3969,696), (3978,697), (3987,698),
+      (3996,699), (4005,700), (4014,701), (4023,702), (4032,703), (4041,704), (4050,705), (4060,706),
+      (4069,707), (4078,708), (4087,709), (4096,710), (4105,711), (4114,712), (4123,713), (4132,714),
+      (4141,715), (4150,716), (4160,717), (4169,718), (4178,719), (4187,720), (4196,721), (4205,722),
+      (4214,723), (4223,724), (4232,725), (4241,726), (4250,727), (4260,728), (4269,729), (4278,730),
+      (4287,731), (4296,732), (4305,733), (4314,734), (4323,735), (4332,736), (4341,737), (4350,738),
+      (4360,739), (4369,740), (4378,741), (4387,742), (4396,743), (4405,744), (4414,745), (4423,746),
+      (4432,747), (4441,748), (4450,749), (4460,750), (4469,751), (4478,752), (4487,753), (4496,754),
+      (4505,755), (4514,756), (4523,757), (4532,758), (4541,759), (4550,760), (4560,761), (4569,762),
+      (4578,763), (4587,764), (4596,765), (4605,766), (4614,767), (4623,768), (4632,769), (4641,770),
+      (4650,771), (4660,772), (4669,773), (4678,774), (4687,775), (4696,776), (4705,777), (4714,778),
+      (4723,779), (4732,780), (4741,781), (4750,782), (4760,783), (4769,784), (4778,785), (4787,786),
+      (4796,787), (4805,788), (4814,789), (4823,790), (4832,791), (4841,792), (4850,793), (4860,794),
+      (4869,795), (4878,796), (4887,797), (4896,798), (4905,799), (4914,800), (4923,801), (4932,802),
+      (4941,803), (4950,804), (4960,805), (4969,806), (4978,807), (4987,808), (4996,809), (5005,810),
+      (5015,811), (5025,812), (5035,813), (5045,814), (5055,815), (5065,816), (5075,817), (5085,818),
+      (5095,819), (5105,820), (5115,821), (5125,822), (5135,823), (5145,824), (5155,825), (5165,826),
+      (5175,827), (5185,828), (5195,829), (5205,830), (5215,831), (5225,832), (5235,833), (5245,834),
+      (5255,835), (5265,836), (5275,837), (5285,838), (5295,839), (5305,840), (5315,841), (5325,842),
+      (5335,843), (5345,844), (5355,845), (5365,846), (5375,847), (5385,848), (5395,849), (5405,850),
+      (5415,851), (5425,852), (5435,853), (5445,854), (5455,855), (5465,856), (5475,857), (5485,858),
+      (5495,859), (5505,860), (5515,861), (5525,862), (5535,863), (5545,864), (5555,865), (5565,866),
+      (5575,867), (5585,868), (5595,869), (5605,870), (5615,871), (5625,872), (5635,873), (5645,874),
+      (5655,875), (5665,876), (5675,877), (5685,878), (5695,879), (5705,880), (5715,881), (5725,882),
+      (5735,883), (5745,884), (5755,885), (5765,886), (5775,887), (5785,888), (5795,889), (5805,890),
+      (5815,891), (5825,892), (5835,893), (5845,894), (5855,895), (5865,896), (5875,897), (5885,898),
+      (5895,899), (5905,900), (5915,901), (5925,902), (5935,903), (5945,904), (5955,905), (5965,906),
+      (5975,907), (5985,908), (5995,909), (6005,910), (6015,911), (6025,912), (6035,913), (6045,914),
+      (6055,915), (6065,916), (6075,917), (6085,918), (6095,919), (6105,920), (6115,921), (6125,922),
+      (6135,923), (6145,924), (6155,925), (6165,926), (6175,927), (6185,928), (6195,929), (6205,930),
+      (6215,931), (6225,932), (6235,933), (6245,934), (6255,935), (6265,936), (6275,937), (6285,938),
+      (6295,939), (6305,940), (6315,941), (6325,942), (6335,943), (6345,944), (6355,945), (6365,946),
+      (6375,947), (6385,948), (6395,949), (6405,950), (6415,951), (6425,952), (6435,953), (6445,954),
+      (6455,955), (6465,956), (6475,957), (6485,958), (6495,959), (6505,960), (6515,961), (6525,962),
+      (6535,963), (6545,964), (6555,965), (6565,966), (6575,967), (6585,968), (6595,969), (6605,970),
+      (6615,971), (6625,972), (6635,973), (6645,974), (6655,975), (6665,976), (6675,977), (6685,978),
+      (6695,979), (6705,980), (6715,981), (6725,982), (6735,983), (6745,984), (6755,985), (6765,986),
+      (6775,987), (6785,988), (6795,989), (6805,990), (6815,991), (6825,992), (6835,993), (6845,994),
+      (6855,995), (6865,996), (6875,997), (6885,998), (6895,999), (6905,1000), (6915,1001), (6925,1002),
+      (6935,1003), (6945,1004), (6955,1005), (6965,1006), (6975,1007), (6985,1008), (6995,1009), (7015,1011),
+      (7025,1012), (7035,1013), (7045,1014), (7055,1015), (7065,1016), (7075,1017), (7085,1018), (7095,1019),
+      (7105,1020), (7115,1021), (7125,1022), (7135,1023), (7145,1024), (7155,1025), (7165,1026), (7175,1027),
+      (7185,1028), (7195,1029), (7205,1030), (7215,1031), (7225,1032), (7235,1033), (7245,1034), (7255,1035),
+      (7265,1036), (7275,1037), (7285,1038), (7295,1039), (7305,1040), (7315,1041), (7325,1042), (7335,1043),
+      (7345,1044), (7355,1045), (7365,1046), (7375,1047), (7385,1048), (7395,1049), (7405,1050), (7415,1051),
+      (7425,1052), (7435,1053), (7445,1054), (7465,1056), (7475,1057), (7485,1058), (7495,1059), (7505,1060),
+      (7515,1061), (7525,1062), (7535,1063), (7545,1064), (7555,1065), (7565,1066), (7575,1067), (7585,1068),
+      (7595,1069), (7605,1070), (7615,1071), (7625,1072), (7635,1073), (7645,1074), (7655,1075), (7665,1076),
+      (7675,1077), (7685,1078), (7695,1079), (7705,1080), (7715,1081), (7725,1082), (7735,1083), (7745,1084),
+      (7755,1085), (7765,1086), (7775,1087), (7785,1088), (7795,1089), (7805,1090), (7815,1091), (7825,1092),
+      (7835,1093), (7845,1094), (7855,1095), (7865,1096), (7875,1097), (7885,1098), (7895,1099), (7915,1101),
+      (7925,1102), (7935,1103), (7945,1104), (7955,1105), (7965,1106), (7975,1107), (7985,1108), (7995,1109),
+      (8005,1110), (8015,1111), (8025,1112), (8035,1113), (8045,1114), (8055,1115), (8065,1116), (8075,1117),
+      (8085,1118), (8095,1119), (8105,1120), (8115,1121), (8125,1122), (8135,1123), (8145,1124), (8155,1125),
+      (8165,1126), (8175,1127), (8185,1128), (8195,1129), (8205,1130), (8215,1131), (8225,1132), (8235,1133),
+      (8245,1134), (8255,1135), (8265,1136), (8275,1137), (8285,1138), (8295,1139), (8305,1140), (8315,1141),
+      (8325,1142), (8335,1143), (8345,1144), (8365,1146), (8375,1147), (8385,1148), (8395,1149), (8405,1150),
+      (8415,1151), (8425,1152), (8435,1153), (8445,1154), (8455,1155), (8465,1156), (8475,1157), (8485,1158),
+      (8495,1159), (8505,1160), (8515,1161), (8525,1162), (8535,1163), (8545,1164), (8555,1165), (8565,1166),
+      (8575,1167), (8585,1168), (8595,1169), (8605,1170), (8615,1171), (8625,1172), (8635,1173), (8654,1174),
+  ]
+  def lookup_table_a(income):
+    income = max(0, float(income))
+    if income > 8654:
+      income = 8654
+    amount = table_a_schedule[0][1]
+    for threshold, value in table_a_schedule:
+      if threshold <= income:
+        amount = value
+      else:
+        break
+    return amount
+---
+# ---------------------------------------------------------------------------
+# TABLE B: Adjustment for number of children (multiplier applied to the
+# 1-child amount from Table A to get the combined support amount).
+# ---------------------------------------------------------------------------
+code: |
+  table_b_schedule = {0: 0.00, 1: 1.00, 2: 1.40, 3: 1.68, 4: 1.85, 5: 1.94}
+  def lookup_table_b(num_children):
+    n = int(num_children)
+    if n > 5:
+      n = 5
+    if n < 0:
+      n = 0
+    return table_b_schedule[n]
+---
+# ---------------------------------------------------------------------------
+# TABLE C: Adjustment percentage for children 18 years or older. Rows = number
+# of children under 18, columns = number of children 18 or older. Capped by
+# the worksheet's "Maximum of 5 children" rule (row + col <= 5). If there are
+# 0 children 18 or older, the adjustment is 0% (no row/column needed).
+# ---------------------------------------------------------------------------
+code: |
+  table_c_schedule = {
+    0: {1: 0.25, 2: 0.25, 3: 0.25, 4: 0.25, 5: 0.25},
+    1: {1: 0.07, 2: 0.11, 3: 0.13, 4: 0.14},
+    2: {1: 0.04, 2: 0.06, 3: 0.07},
+    3: {1: 0.02, 2: 0.03},
+    4: {1: 0.01},
+    5: {},
+  }
+  def lookup_table_c(under_18, over_18):
+    if int(over_18) <= 0:
+      return 0.00
+    row = table_c_schedule.get(int(under_18), {})
+    return row.get(int(over_18), 0.00)
+---
+# ---------------------------------------------------------------------------
+# SECTION 3: Gross support amounts
+# ---------------------------------------------------------------------------
+code: |
+  # 3a. Available income = 2a + 2c - 2d - 2e - 2f, but not less than $0
+  users[0].available_income_amount = max(0, (
+    users[0].gross_weekly_income_amount + users[0].total_dependency_benefit_amount
+    - users[0].other_support_paid_amount - users[0].health_care_premium_amount
+    - users[0].dental_vision_insurance_amount
+  ))
+  other_parties[0].available_income_amount = max(0, (
+    other_parties[0].gross_weekly_income_amount + other_parties[0].total_dependency_benefit_amount
+    - other_parties[0].other_support_paid_amount - other_parties[0].health_care_premium_amount
+    - other_parties[0].dental_vision_insurance_amount
+  ))
+  # 3b. Combined available income
+  combined_available_income_amount = users[0].available_income_amount + other_parties[0].available_income_amount
+  # 3c. Share of combined available income (Min 0%, Max 100%)
+  if combined_available_income_amount > 0:
+    users[0].combined_income_share_percentage = min(1.0, max(0.0, users[0].available_income_amount / combined_available_income_amount))
+    other_parties[0].combined_income_share_percentage = min(1.0, max(0.0, other_parties[0].available_income_amount / combined_available_income_amount))
+  else:
+    users[0].combined_income_share_percentage = 0.0
+    other_parties[0].combined_income_share_percentage = 0.0
+  # 3d. Applicable available income: 3b or $8,654, whichever is less
+  applicable_available_income_amount = min(combined_available_income_amount, 8654)
+  # 3e. Support amount for one child, from Table A / Guidelines Chart
+  one_child_support_amount = lookup_table_a(applicable_available_income_amount)
+  # 3f. Adjustment for the number of children in 1f, from Table B
+  child_count_adjustment_factor = lookup_table_b(number_of_children_eligible)
+  # 3g. Combined support amount
+  combined_support_amount = one_child_support_amount * child_count_adjustment_factor
+---
+# ---------------------------------------------------------------------------
+# SECTION 4: Adjustment for children 18 years or older
+#
+# Note on form layout: the printed worksheet shows 4a-4c in both the Parent A
+# and Parent B columns, but the underlying calculation is a single, combined
+# value (it adjusts 3g, which is a single combined number). This interview
+# computes one combined value and writes it into both columns' fields, which
+# matches the form's own duplicated display.
+# ---------------------------------------------------------------------------
+code: |
+  age_adjustment_percentage = lookup_table_c(total_children_under_18, total_children_18_or_older)
+  age_adjustment_amount = combined_support_amount * age_adjustment_percentage
+  adjusted_combined_support_amount = combined_support_amount - age_adjustment_amount
+---
+# ---------------------------------------------------------------------------
+# SECTION 5: Proportional support amounts
+# ---------------------------------------------------------------------------
+code: |
+  # 5a. Each parent's share of support = 3c x 4c
+  users[0].share_of_support_amount = users[0].combined_income_share_percentage * adjusted_combined_support_amount
+  other_parties[0].share_of_support_amount = other_parties[0].combined_income_share_percentage * adjusted_combined_support_amount
+  # 5b. Other parent's share of support = 4c - 5a (in each parent's own column,
+  # this is the OTHER parent's 5a amount)
+  users[0].other_parent_share_amount = adjusted_combined_support_amount - users[0].share_of_support_amount
+  other_parties[0].other_parent_share_amount = adjusted_combined_support_amount - other_parties[0].share_of_support_amount
+  # 5c. Other parent's share of support with low-income payor adjustment
+  if parenting_arrangement_primary:
+    # Box 2: Parent B (other_parties[0]) gets $0; for Parent A, apply the
+    # low-income test using Parent B's own available income (3a).
+    other_parties[0].low_income_adjusted_support_amount = 0
+    if other_parties[0].available_income_amount > 391:
+      users[0].low_income_adjusted_support_amount = users[0].other_parent_share_amount
+    else:
+      users[0].low_income_adjusted_support_amount = lookup_table_a(other_parties[0].available_income_amount)
+  else:
+    # Box 1 or Box 3: test each parent's own available income against $391;
+    # if at/below it, substitute the shaded Guidelines Chart amount for that
+    # parent's own available income.
+    if other_parties[0].available_income_amount > 391:
+      users[0].low_income_adjusted_support_amount = users[0].other_parent_share_amount
+    else:
+      users[0].low_income_adjusted_support_amount = lookup_table_a(other_parties[0].available_income_amount)
+    if users[0].available_income_amount > 391:
+      other_parties[0].low_income_adjusted_support_amount = other_parties[0].other_parent_share_amount
+    else:
+      other_parties[0].low_income_adjusted_support_amount = lookup_table_a(users[0].available_income_amount)
+---
+# ---------------------------------------------------------------------------
+# SECTION 6: Adjusted support amounts
+# ---------------------------------------------------------------------------
+code: |
+  # 6a. Child care cost benchmark amount, per child, then summed
+  CHILDCARE_BENCHMARK = 430
+  users_benchmark_total = 0
+  other_benchmark_total = 0
+  for paid_by_user, paid_by_other in child_care_amounts_by_child:
+    total_for_child = paid_by_user + paid_by_other
+    if total_for_child <= 0:
+      continue
+    if total_for_child <= CHILDCARE_BENCHMARK:
+      users_benchmark_total += paid_by_user
+      other_benchmark_total += paid_by_other
+    else:
+      factor = CHILDCARE_BENCHMARK / total_for_child
+      users_benchmark_total += paid_by_user * factor
+      other_benchmark_total += paid_by_other * factor
+  users[0].benchmark_child_care_amount = users_benchmark_total
+  other_parties[0].benchmark_child_care_amount = other_benchmark_total
+  # 6b. Other parent's share of benchmark cost
+  users[0].benchmark_share_amount = other_parties[0].combined_income_share_percentage * users[0].benchmark_child_care_amount
+  other_parties[0].benchmark_share_amount = users[0].combined_income_share_percentage * other_parties[0].benchmark_child_care_amount
+  # 6c. Other parent's adjusted share of support = 5c + 6b
+  users[0].adjusted_support_amount = users[0].low_income_adjusted_support_amount + users[0].benchmark_share_amount
+  other_parties[0].adjusted_support_amount = other_parties[0].low_income_adjusted_support_amount + other_parties[0].benchmark_share_amount
+  # 6d. Support as % of each parent's available income
+  if parenting_arrangement_primary:
+    users[0].support_percentage_display = "N/A"
+    other_parties[0].support_percentage_display = "N/A"
+    users[0].support_percentage = None
+    other_parties[0].support_percentage = None
+  else:
+    if users[0].available_income_amount == 0:
+      users[0].support_percentage = 1.0
+    else:
+      users[0].support_percentage = users[0].adjusted_support_amount / users[0].available_income_amount
+    if other_parties[0].available_income_amount == 0:
+      other_parties[0].support_percentage = 1.0
+    else:
+      other_parties[0].support_percentage = other_parties[0].adjusted_support_amount / other_parties[0].available_income_amount
+    users[0].support_percentage_display = percentage(users[0].support_percentage)
+    other_parties[0].support_percentage_display = percentage(other_parties[0].support_percentage)
+  # 6e. Other parent's adjusted share of support
+  def section_6e(party, other_party):
+    pct_is_low = (party.support_percentage is not None) and (party.support_percentage < 0.10)
+    if not pct_is_low:
+      return party.adjusted_support_amount
+    candidate = min(party.adjusted_support_amount, (party.support_percentage + 0.10) * other_party.available_income_amount)
+    floor_amount = lookup_table_a(other_party.available_income_amount)
+    return max(candidate, floor_amount)
+  users[0].final_adjusted_support_amount = section_6e(users[0], other_parties[0])
+  other_parties[0].final_adjusted_support_amount = section_6e(other_parties[0], users[0])
+  # 6f. Recipient and Payor
+  if parenting_arrangement_primary:
+    users[0].recipient_or_payor = "Recipient"
+    other_parties[0].recipient_or_payor = "Payor"
+  else:
+    if users[0].adjusted_support_amount == other_parties[0].adjusted_support_amount:
+      users[0].recipient_or_payor = "Recipient"
+      other_parties[0].recipient_or_payor = "Payor"
+    elif users[0].final_adjusted_support_amount > other_parties[0].final_adjusted_support_amount:
+      users[0].recipient_or_payor = "Recipient"
+      other_parties[0].recipient_or_payor = "Payor"
+    else:
+      users[0].recipient_or_payor = "Payor"
+      other_parties[0].recipient_or_payor = "Recipient"
+  if users[0].recipient_or_payor == "Recipient":
+    recipient, payor = users[0], other_parties[0]
+  else:
+    recipient, payor = other_parties[0], users[0]
+  # 6g. Payor's adjusted share of support = Recipient 6e - Payor 6e, not less than $0
+  payor_adjusted_support_amount = max(0, recipient.final_adjusted_support_amount - payor.final_adjusted_support_amount)
+  # Flag (not auto-calculated) per the worksheet's own hand-calculation note:
+  # if Box 1 or Box 3, and there is a dependency benefit in the Recipient's 2c,
+  # a second worksheet must be hand-run substituting 2b for 2c in that column.
+  dependency_benefit_recalculation_flag = (
+    (not parenting_arrangement_primary) and recipient.total_dependency_benefit_amount > 0
+  )
+---
+# ---------------------------------------------------------------------------
+# SECTION 7: Payor's net support obligation
+# ---------------------------------------------------------------------------
+code: |
+  # 7a. Support as % of Recipient's available income
+  if not parenting_arrangement_primary:
+    support_percentage_of_recipient_income_display = "N/A"
+    support_percentage_of_recipient_income = None
+  else:
+    if recipient.available_income_amount == 0:
+      support_percentage_of_recipient_income = 1.0
+    else:
+      support_percentage_of_recipient_income = payor_adjusted_support_amount / recipient.available_income_amount
+    support_percentage_of_recipient_income_display = percentage(support_percentage_of_recipient_income)
+  # 7b. Payor's support obligation adjusted for income disparity
+  pct_is_low_7 = (support_percentage_of_recipient_income is not None) and (support_percentage_of_recipient_income < 0.10)
+  if not pct_is_low_7:
+    adjusted_payor_support_amount = payor_adjusted_support_amount
+  else:
+    candidate_7b = min(payor.final_adjusted_support_amount, payor_adjusted_support_amount, (support_percentage_of_recipient_income + 0.10) * payor.available_income_amount)
+    floor_7b = lookup_table_a(payor.available_income_amount)
+    adjusted_payor_support_amount = max(candidate_7b, floor_7b)
+  # 7c. Credit for Social Security dependency benefits paid directly to the Recipient
+  social_security_credit_amount = recipient.social_security_dependency_benefit_amount if recipient.total_dependency_benefit_amount > 0 else 0
+  # 7d. Payor's final support obligation
+  if adjusted_payor_support_amount > social_security_credit_amount:
+    payor_final_support_obligation_amount = adjusted_payor_support_amount - social_security_credit_amount
+  else:
+    payor_final_support_obligation_amount = 0
+  # 7e. Support as % of Payor's available income
+  if payor.available_income_amount == 0:
+    payor_support_percentage = 1.0
+  else:
+    payor_support_percentage = payor_final_support_obligation_amount / payor.available_income_amount
+  substantial_hardship_deviation = payor_support_percentage >= 0.40
+---
+# ---------------------------------------------------------------------------
+# SECTION 8: Additional income above $8,654
+# ---------------------------------------------------------------------------
+code: |
+  has_additional_available_income = combined_available_income_amount > 8654
+  additional_available_income_amount = max(0, combined_available_income_amount - 8654)
+  users[0].additional_income_share_amount = additional_available_income_amount * users[0].combined_income_share_percentage
+  other_parties[0].additional_income_share_amount = additional_available_income_amount * other_parties[0].combined_income_share_percentage
+  _ = percentage  # ensure percentage() is in namespace before template renders
+  _ = payor_final_support_obligation_amount  # cascade-trigger Sections 4-7
+  calculations_complete = True
+---
+attachment:
+  name: Child Support Guidelines Worksheet
+  filename: MA_Child_Support_Worksheet
+  variable name: ma_child_support_guidelines_worksheet_attachment[i]
+  skip undefined: True
+  pdf template file: MA_Child_Support_Worksheet_labeled.pdf
+  fields:
+    case_name__1: ${ case_name }
+    case_name__2: ${ case_name }
+    case_name__3: ${ case_name }
+    case_name__4: ${ case_name }
+    docket_number__1: ${ docket_number }
+    docket_number__2: ${ docket_number }
+    docket_number__3: ${ docket_number }
+    docket_number__4: ${ docket_number }
+    signature_date: ${ signature_date }
+    preparer_name: ${ preparer_name }
+    number_of_children_eligible: ${ int(number_of_children_eligible) }
+    parenting_arrangement_shared: ${ parenting_arrangement_shared }
+    parenting_arrangement_primary: ${ parenting_arrangement_primary }
+    parenting_arrangement_split: ${ parenting_arrangement_split }
+    users1_name__1: ${ users[0].name.first }
+    other_parties1_name__1: ${ other_parties[0].name.first }
+    users1_children_under_18_count: ${ users[0].children_under_18_count }
+    other_parties1_children_under_18_count: ${ other_parties[0].children_under_18_count }
+    users1_children_18_or_older_count: ${ users[0].children_18_or_older_count }
+    other_parties1_children_18_or_older_count: ${ other_parties[0].children_18_or_older_count }
+    users1_total_children_count: ${ users[0].total_children_count }
+    other_parties1_total_children_count: ${ other_parties[0].total_children_count }
+    users1_gross_weekly_income_amount: ${ currency(users[0].gross_weekly_income_amount) }
+    other_parties1_gross_weekly_income_amount: ${ currency(other_parties[0].gross_weekly_income_amount) }
+    social_security_dependency_benefits_yes: ${ social_security_dependency_benefits_yes }
+    social_security_dependency_benefits_no: ${ social_security_dependency_benefits_no }
+    dependency_benefit_based_on_user: ${ dependency_benefit_based_on_user }
+    dependency_benefit_based_on_other_party: ${ dependency_benefit_based_on_other_party }
+    users1_social_security_dependency_benefit_amount: ${ currency(users[0].social_security_dependency_benefit_amount) }
+    other_parties1_social_security_dependency_benefit_amount: ${ currency(other_parties[0].social_security_dependency_benefit_amount) }
+    users1_total_dependency_benefit_amount: ${ currency(users[0].total_dependency_benefit_amount) }
+    other_parties1_total_dependency_benefit_amount: ${ currency(other_parties[0].total_dependency_benefit_amount) }
+    users1_other_support_paid_amount: ${ currency(users[0].other_support_paid_amount) }
+    other_parties1_other_support_paid_amount: ${ currency(other_parties[0].other_support_paid_amount) }
+    users1_health_care_premium_amount: ${ currency(users[0].health_care_premium_amount) }
+    other_parties1_health_care_premium_amount: ${ currency(other_parties[0].health_care_premium_amount) }
+    users1_dental_vision_insurance_amount: ${ currency(users[0].dental_vision_insurance_amount) }
+    other_parties1_dental_vision_insurance_amount: ${ currency(other_parties[0].dental_vision_insurance_amount) }
+    child1_care_paid_by_user_amount: ${ currency(child1_care_paid_by_user_amount) }
+    child2_care_paid_by_user_amount: ${ currency(child2_care_paid_by_user_amount) }
+    child3_care_paid_by_user_amount: ${ currency(child3_care_paid_by_user_amount) }
+    child4_care_paid_by_user_amount: ${ currency(child4_care_paid_by_user_amount) }
+    child5_care_paid_by_user_amount: ${ currency(child5_care_paid_by_user_amount) }
+    child1_care_paid_by_other_party_amount: ${ currency(child1_care_paid_by_other_party_amount) }
+    child2_care_paid_by_other_party_amount: ${ currency(child2_care_paid_by_other_party_amount) }
+    child3_care_paid_by_other_party_amount: ${ currency(child3_care_paid_by_other_party_amount) }
+    child4_care_paid_by_other_party_amount: ${ currency(child4_care_paid_by_other_party_amount) }
+    child5_care_paid_by_other_party_amount: ${ currency(child5_care_paid_by_other_party_amount) }
+    child1_care_total_amount: ${ currency(child1_care_total_amount) }
+    child2_care_total_amount: ${ currency(child2_care_total_amount) }
+    child3_care_total_amount: ${ currency(child3_care_total_amount) }
+    child4_care_total_amount: ${ currency(child4_care_total_amount) }
+    child5_care_total_amount: ${ currency(child5_care_total_amount) }
+    users1_total_child_care_amount: ${ currency(users[0].total_child_care_amount) }
+    other_parties1_total_child_care_amount: ${ currency(other_parties[0].total_child_care_amount) }
+    users1_available_income_amount: ${ currency(users[0].available_income_amount) }
+    other_parties1_available_income_amount: ${ currency(other_parties[0].available_income_amount) }
+    combined_available_income_amount: ${ currency(combined_available_income_amount) }
+    users1_combined_income_share_percentage: ${ percentage(users[0].combined_income_share_percentage) }
+    other_parties1_combined_income_share_percentage: ${ percentage(other_parties[0].combined_income_share_percentage) }
+    applicable_available_income_amount: ${ currency(applicable_available_income_amount) }
+    one_child_support_amount: ${ currency(one_child_support_amount) }
+    child_count_adjustment_factor: ${ child_count_adjustment_factor }
+    combined_support_amount: ${ currency(combined_support_amount) }
+    users1_age_adjustment_percentage: ${ percentage(age_adjustment_percentage) }
+    other_parties1_age_adjustment_percentage: ${ percentage(age_adjustment_percentage) }
+    users1_age_adjustment_amount: ${ currency(age_adjustment_amount) }
+    other_parties1_age_adjustment_amount: ${ currency(age_adjustment_amount) }
+    users1_adjusted_combined_support_amount: ${ currency(adjusted_combined_support_amount) }
+    other_parties1_adjusted_combined_support_amount: ${ currency(adjusted_combined_support_amount) }
+    users1_share_of_support_amount: ${ currency(users[0].share_of_support_amount) }
+    other_parties1_share_of_support_amount: ${ currency(other_parties[0].share_of_support_amount) }
+    users1_other_parent_share_amount: ${ currency(users[0].other_parent_share_amount) }
+    other_parties1_other_parent_share_amount: ${ currency(other_parties[0].other_parent_share_amount) }
+    users1_low_income_adjusted_support_amount: ${ currency(users[0].low_income_adjusted_support_amount) }
+    other_parties1_low_income_adjusted_support_amount: ${ currency(other_parties[0].low_income_adjusted_support_amount) }
+    users1_benchmark_child_care_amount: ${ currency(users[0].benchmark_child_care_amount) }
+    other_parties1_benchmark_child_care_amount: ${ currency(other_parties[0].benchmark_child_care_amount) }
+    users1_benchmark_share_amount: ${ currency(users[0].benchmark_share_amount) }
+    other_parties1_benchmark_share_amount: ${ currency(other_parties[0].benchmark_share_amount) }
+    users1_adjusted_support_amount: ${ currency(users[0].adjusted_support_amount) }
+    other_parties1_adjusted_support_amount: ${ currency(other_parties[0].adjusted_support_amount) }
+    users1_support_percentage: ${ users[0].support_percentage_display }
+    other_parties1_support_percentage: ${ other_parties[0].support_percentage_display }
+    users1_final_adjusted_support_amount: ${ currency(users[0].final_adjusted_support_amount) }
+    other_parties1_final_adjusted_support_amount: ${ currency(other_parties[0].final_adjusted_support_amount) }
+    users1_recipient_or_payor__1: ${ users[0].recipient_or_payor }
+    other_parties1_recipient_or_payor__1: ${ other_parties[0].recipient_or_payor }
+    users1_recipient_or_payor__2: ${ users[0].recipient_or_payor }
+    other_parties1_recipient_or_payor__2: ${ other_parties[0].recipient_or_payor }
+    payor_adjusted_support_amount: ${ currency(payor_adjusted_support_amount) }
+    dependency_benefit_recalculation: ${ dependency_benefit_recalculation_flag }
+    support_percentage_of_recipient_income: ${ support_percentage_of_recipient_income_display }
+    adjusted_payor_support_amount: ${ currency(adjusted_payor_support_amount) }
+    social_security_credit_amount: ${ currency(social_security_credit_amount) }
+    payor_final_support_obligation_amount__1: ${ currency(payor_final_support_obligation_amount) }
+    payor_final_support_obligation_amount__2: ${ currency(payor_final_support_obligation_amount) }
+    payor_support_percentage: ${ percentage(payor_support_percentage) }
+    substantial_hardship_deviation__1: ${ substantial_hardship_deviation }
+    substantial_hardship_deviation__2: ${ substantial_hardship_deviation }
+    has_additional_available_income: ${ has_additional_available_income }
+    additional_available_income_amount: ${ currency(additional_available_income_amount) }
+    users1_additional_income_share_amount: ${ currency(users[0].additional_income_share_amount) }
+    other_parties1_additional_income_share_amount: ${ currency(other_parties[0].additional_income_share_amount) }
+---
+id: download ma_child_support_guidelines_worksheet
+section: review
+event: ma_child_support_guidelines_worksheet_download
+question: |
+  Your worksheet is ready to download
+subquestion: |
+  % if dependency_benefit_recalculation_flag:
+  **You need to do one more step by hand.** This worksheet includes a
+  Social Security dependency benefit in the recipient's income (Section 2c),
+  and the parents have shared or split parenting. The guidelines require a
+  second worksheet in this situation. For that second worksheet, use the
+  amount from Section 2b instead of Section 2c for the recipient parent.
+  The final support obligation shown above may change after you complete
+  that second worksheet.
+
+  % endif
+  ${ action_button_html(url_action('review_ma_child_support_guidelines_worksheet'), label='Edit answers', color='info') }
+
+  ${ al_user_bundle.download_list_html() }
+
+  ${ al_user_bundle.send_button_html(show_editable_checkbox=False) }
+
+  **What to do next**
+
+  File this worksheet with the Probate and Family Court along with your
+  separation agreement and findings, if required.
+progress: 100
+---
+id: review ma_child_support_guidelines_worksheet
+section: review
+event: review_ma_child_support_guidelines_worksheet
+question: |
+  Review your answers
+review:
+  - Edit: case_name
+    button: |
+      **Case information**
+
+      Case name: ${ case_name }
+
+      Docket number: ${ docket_number }
+
+      Date: ${ signature_date }
+
+      Preparer: ${ preparer_name }
+  - Edit: parenting_box
+    button: |
+      **Parenting arrangement**
+
+      % if parenting_arrangement_shared:
+      Approximately equal time with both parents
+      % elif parenting_arrangement_primary:
+      Children live mainly with one parent
+      % else:
+      Split custody — each parent is primary for at least one child
+      % endif
+  - Edit: users[0].name.first
+    button: |
+      **Parents' names**
+
+      First parent: ${ users[0].name.first }
+
+      Second parent: ${ other_parties[0].name.first }
+  - Edit: users[0].gross_weekly_income_amount
+    button: |
+      **Gross weekly income**
+
+      ${ users[0].name.first }: ${ currency(users[0].gross_weekly_income_amount) }
+
+      ${ other_parties[0].name.first }: ${ currency(other_parties[0].gross_weekly_income_amount) }
+  - Edit: social_security_dependency_benefits_yes
+    button: |
+      **Social Security dependency benefits**
+
+      ${ word(yesno(social_security_dependency_benefits_yes)) }
+  - Edit: users[0].other_support_paid_amount
+    button: |
+      **Deductions**
+
+      ${ users[0].name.first } — other support: ${ currency(users[0].other_support_paid_amount) }, health care: ${ currency(users[0].health_care_premium_amount) }, dental/vision: ${ currency(users[0].dental_vision_insurance_amount) }
+
+      ${ other_parties[0].name.first } — other support: ${ currency(other_parties[0].other_support_paid_amount) }, health care: ${ currency(other_parties[0].health_care_premium_amount) }, dental/vision: ${ currency(other_parties[0].dental_vision_insurance_amount) }
+  - Edit: child1_care_paid_by_user_amount
+    button: |
+      **Child care costs**
+
+      Child 1: ${ users[0].name.first } ${ currency(child1_care_paid_by_user_amount) }, ${ other_parties[0].name.first } ${ currency(child1_care_paid_by_other_party_amount) }
+
+      Child 2: ${ users[0].name.first } ${ currency(child2_care_paid_by_user_amount) }, ${ other_parties[0].name.first } ${ currency(child2_care_paid_by_other_party_amount) }
+
+      Child 3: ${ users[0].name.first } ${ currency(child3_care_paid_by_user_amount) }, ${ other_parties[0].name.first } ${ currency(child3_care_paid_by_other_party_amount) }
+
+      Child 4: ${ users[0].name.first } ${ currency(child4_care_paid_by_user_amount) }, ${ other_parties[0].name.first } ${ currency(child4_care_paid_by_other_party_amount) }
+
+      Child 5: ${ users[0].name.first } ${ currency(child5_care_paid_by_user_amount) }, ${ other_parties[0].name.first } ${ currency(child5_care_paid_by_other_party_amount) }
