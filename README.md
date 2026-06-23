@@ -1,4 +1,4 @@
-# docassemble.MACSGWorksheet
+# docassemble.MATCCSGWorksheet
 
 A docassemble extension for the Massachusetts Child Support Guidelines Worksheet (CJD 304).
 

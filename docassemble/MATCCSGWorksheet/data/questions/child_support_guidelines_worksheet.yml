@@ -1,4 +1,7 @@
 ---
+include:
+  - docassemble.AssemblyLine:assembly_line.yml
+---
 metadata:
   title: |
     Massachusetts Child Support Guidelines Worksheet (CJD 304)
@@ -15,15 +18,12 @@ metadata:
   jurisdiction: Massachusetts
   id: ma child support guidelines worksheet
 ---
-include:
-  - docassemble.AssemblyLine:assembly_line.yml
----
 objects:
   - users: ALPeopleList.using(ask_number=False, target_number=1)
   - other_parties: ALPeopleList.using(ask_number=False, target_number=1)
 ---
 code: |
-  github_repo_name = 'docassemble-MACSGWorksheet'
+  github_repo_name = 'docassemble-MATCCSGWorksheet'
 ---
 code: |
   al_form_type = "other_form"
@@ -53,7 +53,7 @@ sections:
   - childcare: Child care costs
   - review: Review and download
 ---
-mandatory: True
+initial: True
 code: |
   al_nav_sections = [
     {"intro": "Getting started"},
