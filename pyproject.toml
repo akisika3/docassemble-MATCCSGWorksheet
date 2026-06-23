@@ -12,7 +12,9 @@ readme = "README.md"
 authors = [
     { name = "LIT Lab", email = "alara.akisik@su.suffolk.edu" },
 ]
-dependencies = []
+dependencies = [
+    "docassemble.AssemblyLine",
+]
 license = "MIT"
 license-files = [
     "LICENSE",
