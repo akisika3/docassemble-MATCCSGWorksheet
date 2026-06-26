@@ -1,4 +1,7 @@
 ---
+include:
+  - docassemble.AssemblyLine:assembly_line.yml
+---
 metadata:
   title: |
     Massachusetts Child Support Guidelines Worksheet (CJD 304)
@@ -15,15 +18,12 @@ metadata:
   jurisdiction: Massachusetts
   id: ma child support guidelines worksheet
 ---
-include:
-  - docassemble.AssemblyLine:assembly_line.yml
----
 objects:
   - users: ALPeopleList.using(ask_number=False, target_number=1)
   - other_parties: ALPeopleList.using(ask_number=False, target_number=1)
 ---
 code: |
-  github_repo_name = 'docassemble-MACSGWorksheet'
+  github_repo_name = 'docassemble-MATCCSGWorksheet'
 ---
 code: |
   al_form_type = "other_form"
@@ -53,7 +53,7 @@ sections:
   - childcare: Child care costs
   - review: Review and download
 ---
-mandatory: True
+initial: True
 code: |
   al_nav_sections = [
     {"intro": "Getting started"},
@@ -260,8 +260,23 @@ question: |
   Do any children receive Social Security dependency benefits?
 subquestion: |
   ${ collapse_template(dependency_benefit_explanation) }
-field: social_security_dependency_benefits_yes
-datatype: yesnoradio
+fields:
+  - no label: social_security_dependency_benefits_yes
+    datatype: yesnoradio
+  - Which parent's retirement or disability are the benefits based on?: dependency_benefit_based_on
+    datatype: radio
+    choices:
+      - ${ users[0].name.first }: user
+      - ${ other_parties[0].name.first }: other_party
+    show if: social_security_dependency_benefits_yes
+  - Weekly amount ${ users[0].name.first } actually receives: users[0].social_security_dependency_benefit_amount
+    datatype: currency
+    min: 0
+    show if: social_security_dependency_benefits_yes
+  - Weekly amount ${ other_parties[0].name.first } actually receives: other_parties[0].social_security_dependency_benefit_amount
+    datatype: currency
+    min: 0
+    show if: social_security_dependency_benefits_yes
 ---
 template: dependency_benefit_explanation
 subject: |
@@ -272,26 +287,6 @@ content: |
 ---
 code: |
   social_security_dependency_benefits_no = not social_security_dependency_benefits_yes
----
-id: social security dependency benefit details
-section: income
-question: |
-  What are the Social Security dependency benefit details?
-fields:
-  - Which parent's retirement or disability are the benefits based on?: dependency_benefit_based_on
-    datatype: radio
-    choices:
-      - ${ users[0].name.first }: user
-      - ${ other_parties[0].name.first }: other_party
-  - Weekly amount ${ users[0].name.first } actually receives: users[0].social_security_dependency_benefit_amount
-    datatype: currency
-    min: 0
-  - Weekly amount ${ other_parties[0].name.first } actually receives: other_parties[0].social_security_dependency_benefit_amount
-    datatype: currency
-    min: 0
-show if:
-  variable: social_security_dependency_benefits_yes
-  is: True
 ---
 code: |
   if not social_security_dependency_benefits_yes:
