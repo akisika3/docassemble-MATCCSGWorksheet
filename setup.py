@@ -53,7 +53,7 @@ setup(name='docassemble.MATCCSGWorksheet',
       license='MIT',
       url='https://docassemble.org',
       packages=find_namespace_packages(),
-      install_requires=['docassemble.AssemblyLine @ git+https://github.com/SuffolkLITLab/docassemble-AssemblyLine.git@main'],
+      install_requires=['docassemble.AssemblyLine'],
       zip_safe=False,
       package_data=find_package_data(where='docassemble/MATCCSGWorksheet/', package='docassemble.MATCCSGWorksheet'),
      )
